@@ -66,9 +66,18 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   const { user, key, candidates } = getOrCreateUserEntry(m)
   const followKey = 'siguiendo'
 
-  user.followed = Boolean(user.followed)
+  // Forzar followed para omitir la verificación de Instagram
+  user.followed = true
   user.registered = Boolean(user.registered)
   user.name = user.name || (m.pushName || 'Usuario')
+
+  // Garantizar que jid/lid estén presentes para compatibilidad con handler
+  try {
+    user.jid = user.jid || m.senderResolved || m.sender || user.jid
+  } catch (e) {}
+  try {
+    user.lid = user.lid || (String(m.sender || '').endsWith('@lid') ? m.sender : (m?.key?.participant && String(m.key.participant).endsWith('@lid') ? m.key.participant : user.lid || ''))
+  } catch (e) {}
 
   if (user.followed) {
     const igUser = (user.instagram || m.pushName || '').replace(/\s+/g, '').toLowerCase()
@@ -143,6 +152,15 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   user.afinidad = afinidad
   user.nivelMagico = nivelMagico
   user.instagram = user.instagram || (m.pushName || '').replace(/\s+/g, '').toLowerCase() || ''
+
+  // Asegurar que jid y lid queden reflejados en el objeto de usuario para resolver mapeos en handler
+  try {
+    user.jid = user.jid || m.senderResolved || m.sender || user.jid
+  } catch (e) {}
+  try {
+    user.lid = user.lid || (String(m.sender || '').endsWith('@lid') ? m.sender : (m?.key?.participant && String(m.key.participant).endsWith('@lid') ? m.key.participant : user.lid || ''))
+  } catch (e) {}
+
   for (const c of candidates) global.db.data.users[c] = user
 
   let profilePic
