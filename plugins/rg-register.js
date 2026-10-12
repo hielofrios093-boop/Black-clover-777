@@ -16,13 +16,6 @@ async function ensureImage(filename, url) {
   return filePath
 }
 
-const INSTAGRAM_USER_ID = process.env.INSTAGRAM_USER_ID || ''
-const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN || ''
-
-async function verificaInstagram(username) {
-  return true
-}
-
 function candidateKeysFromMessage(m) {
   return [
     m?.sender,
@@ -72,44 +65,33 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   if ((text || '').trim().toLowerCase() === followKey) {
     if (!user.followed) {
       user.followed = true
-      user.instagram = (user.instagram || (m.pushName || '')).replace(/\s+/g, '').toLowerCase() || ''
+      user.instagram = user.instagram || (m.pushName || '').replace(/\s+/g, '').toLowerCase() || ''
       for (const c of candidates) global.db.data.users[c] = user
       try { await global.db?.write?.() } catch {}
       try { global.db?.save?.() } catch {}
       return conn.sendMessage(m.chat, {
-        text: `✅ ¡Perfecto! Verificado que sigues a TheCarlosZX.\nAhora puedes usar *${usedPrefix + command} Nombre.Edad* para registrarte.`
+        text: `✅ Verificado.\nAhora puedes usar *${usedPrefix + command} Nombre.Edad* para registrarte.`
       }, { quoted: m })
     }
     return
   }
 
-  if (user.followed) {
-    const igUser = (user.instagram || m.pushName || '').replace(/\s+/g, '').toLowerCase()
-    const sigue = await verificaInstagram(igUser)
-    if (!sigue) {
-      user.followed = false
-      for (const c of candidates) global.db.data.users[c] = user
-      try { await global.db?.write?.() } catch {}
-      try { global.db?.save?.() } catch {}
-    }
-  }
-
   if (!user.followed) {
     return conn.sendMessage(m.chat, {
-      text: `⚠️ Para poder usar el bot primero debes seguir a mi creador en Instagram:\n\n👉 https://www.instagram.com/_carlitos.zx\n\nDespués de seguirlo, escribe:\n\n*${usedPrefix + command} ${followKey}*\n\nY luego puedes continuar con:\n*${usedPrefix + command} Nombre.Edad*`
+      text: `Para usar el registro escribe:\n*${usedPrefix + command} siguiendo*\nLuego usa:\n*${usedPrefix + command} Nombre.Edad*`
     }, { quoted: m })
   }
 
   if (user.registered === true) {
     return conn.sendMessage(m.chat, {
-      text: `⚠️ Ya estás registrado.\nUsa *${usedPrefix}perfil* para ver tu grimorio.`
+      text: `Ya estás registrado.\nUsa *${usedPrefix}perfil* para ver tu grimorio.`
     }, { quoted: m })
   }
 
   const regex = /^([a-zA-ZÀ-ÿñÑ\s]+)\.(\d{1,2})$/i
   if (!regex.test(text || '')) {
     return conn.sendMessage(m.chat, {
-      text: `⚠️ Formato incorrecto. Usa:\n*${usedPrefix + command} Nombre.Edad*\n\nEjemplo:\n*${usedPrefix + command} Asta.18*`
+      text: `Formato incorrecto. Usa:\n*${usedPrefix + command} Nombre.Edad*\n\nEjemplo:\n*${usedPrefix + command} Asta.18*`
     }, { quoted: m })
   }
 
@@ -119,7 +101,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
   if (age < 5 || age > 100) {
     return conn.sendMessage(m.chat, {
-      text: `⚠️ Edad no válida (entre 5 y 100 años).`
+      text: `Edad no válida (entre 5 y 100 años).`
     }, { quoted: m })
   }
 
