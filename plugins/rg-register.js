@@ -20,16 +20,8 @@ const INSTAGRAM_USER_ID = process.env.INSTAGRAM_USER_ID || ''
 const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN || ''
 
 async function verificaInstagram(username) {
-  if (!INSTAGRAM_USER_ID || !IG_ACCESS_TOKEN) return true
-  try {
-    const url = `https://graph.instagram.com/${INSTAGRAM_USER_ID}/followers?access_token=${IG_ACCESS_TOKEN}`
-    const req = await fetch(url)
-    const json = await req.json()
-    if (!json || !json.data) return true
-    return json.data.some(f => f.username && username && f.username.toLowerCase() === username.toLowerCase())
-  } catch (e) {
-    return true
-  }
+  // Forzado a true para omitir la comprobación de seguimiento en Instagram
+  return true
 }
 
 function candidateKeysFromMessage(m) {
