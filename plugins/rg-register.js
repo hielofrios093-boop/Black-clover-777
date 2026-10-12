@@ -57,17 +57,21 @@ function getOrCreateUserEntry(m) {
       if (mainKey !== key) {
         global.db.data.users[mainKey] = Object.assign({}, global.db.data.users[key], global.db.data.users[mainKey] || {})
       }
-      return { user: global.db.data.users[mainKey], key: mainKey }
+      const mainUser = global.db.data.users[mainKey]
+      for (const c of candidates) global.db.data.users[c] = mainUser
+      return { user: mainUser, key: mainKey, candidates }
     }
   }
 
   const mainKey = candidates[0] || m.sender || 'unknown'
   global.db.data.users[mainKey] = global.db.data.users[mainKey] || {}
-  return { user: global.db.data.users[mainKey], key: mainKey }
+  const mainUser = global.db.data.users[mainKey]
+  for (const c of candidates) global.db.data.users[c] = mainUser
+  return { user: mainUser, key: mainKey, candidates }
 }
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
-  const { user, key } = getOrCreateUserEntry(m)
+  const { user, key, candidates } = getOrCreateUserEntry(m)
   const followKey = 'siguiendo'
 
   user.followed = Boolean(user.followed)
@@ -79,6 +83,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const sigue = await verificaInstagram(igUser)
     if (!sigue) {
       user.followed = false
+      for (const c of candidates) global.db.data.users[c] = user
       return conn.sendMessage(m.chat, {
         text: `⚠️ Has dejado de seguir a mi creador en Instagram.\nPor favor síguelo nuevamente:\n👉 https://www.instagram.com/_carlitos.zx\n\nLuego escribe:\n*${usedPrefix + command} ${followKey}*`
       }, { quoted: m })
@@ -96,6 +101,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       }
       user.followed = true
       user.instagram = igUser || user.instagram || ''
+      for (const c of candidates) global.db.data.users[c] = user
       return conn.sendMessage(m.chat, {
         text: `✅ ¡Perfecto! Verificado que sigues a TheCarlosZX.\nAhora puedes usar *${usedPrefix + command} Nombre.Edad* para registrarte.`
       }, { quoted: m })
@@ -145,6 +151,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   user.afinidad = afinidad
   user.nivelMagico = nivelMagico
   user.instagram = user.instagram || (m.pushName || '').replace(/\s+/g, '').toLowerCase() || ''
+  for (const c of candidates) global.db.data.users[c] = user
 
   let profilePic
   try {
@@ -169,7 +176,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   responseMessage += `> *🌿!* ⚔️ 𝑩𝒊𝒆𝒏𝒗𝒆𝒏𝒊𝒅𝒐, *${name.toUpperCase()}* 𝒅𝒆𝒍 𝑹𝒆𝒊𝒏𝒐 ${country}.\n`
   responseMessage += `> *!* ☘️ ¡𝑬𝒍 𝒅𝒆𝒔𝒕𝒊𝒏𝒐 𝒕𝒆 𝒂𝒈𝒖𝒂𝒓𝒅𝒂!`
 
-  const newsletterId = '120363419782804545@newsletter'
+  const newsletterId = '120363413153648177@newsletter'
   const newsletterName = 'The Legends'
 
   const contextInfo = {
