@@ -1,6 +1,3 @@
-//código creado x The Carlos 👑
-//no olvides dejar créditos 
-
 import fs from 'fs'
 import path from 'path'
 import fetch from 'node-fetch'
@@ -35,12 +32,50 @@ async function verificaInstagram(username) {
   }
 }
 
+function candidateKeysFromMessage(m) {
+  return [
+    m?.sender,
+    m?.key?.participant,
+    m?.key?.participantAlt,
+    m?.senderPn,
+    m?.senderPnAlt,
+    m?.phoneNumber,
+    (m?.senderResolved) ? m.senderResolved : null,
+    (m?.key?.remoteJid) ? m.key.remoteJid : null
+  ].filter(Boolean)
+}
+
+function getOrCreateUserEntry(m) {
+  if (!global.db) global.db = { data: { users: {} } }
+  if (!global.db.data) global.db.data = { users: {} }
+  if (!global.db.data.users) global.db.data.users = {}
+
+  const candidates = [...new Set(candidateKeysFromMessage(m))]
+  for (const key of candidates) {
+    if (global.db.data.users[key] && typeof global.db.data.users[key] === 'object') {
+      const mainKey = candidates[0]
+      if (mainKey !== key) {
+        global.db.data.users[mainKey] = Object.assign({}, global.db.data.users[key], global.db.data.users[mainKey] || {})
+      }
+      return { user: global.db.data.users[mainKey], key: mainKey }
+    }
+  }
+
+  const mainKey = candidates[0] || m.sender || 'unknown'
+  global.db.data.users[mainKey] = global.db.data.users[mainKey] || {}
+  return { user: global.db.data.users[mainKey], key: mainKey }
+}
+
 let handler = async (m, { conn, text, usedPrefix, command }) => {
-  const user = global.db.data.users[m.sender]
+  const { user, key } = getOrCreateUserEntry(m)
   const followKey = 'siguiendo'
 
+  user.followed = Boolean(user.followed)
+  user.registered = Boolean(user.registered)
+  user.name = user.name || (m.pushName || 'Usuario')
+
   if (user.followed) {
-    const igUser = (m.pushName || '').replace(/\s+/g, '').toLowerCase()
+    const igUser = (user.instagram || m.pushName || '').replace(/\s+/g, '').toLowerCase()
     const sigue = await verificaInstagram(igUser)
     if (!sigue) {
       user.followed = false
@@ -52,7 +87,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
   if (!user.followed) {
     if ((text || '').toLowerCase() === followKey) {
-      const igUser = (m.pushName || '').replace(/\s+/g, '').toLowerCase()
+      const igUser = (user.instagram || m.pushName || '').replace(/\s+/g, '').toLowerCase()
       const sigue = await verificaInstagram(igUser)
       if (!sigue) {
         return conn.sendMessage(m.chat, {
@@ -60,13 +95,14 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }, { quoted: m })
       }
       user.followed = true
+      user.instagram = igUser || user.instagram || ''
       return conn.sendMessage(m.chat, {
         text: `✅ ¡Perfecto! Verificado que sigues a TheCarlosZX.\nAhora puedes usar *${usedPrefix + command} Nombre.Edad* para registrarte.`
       }, { quoted: m })
     }
 
     return conn.sendMessage(m.chat, {
-      text: `⚠️ Para poder usar el bot primero debes seguir a mi creador en Instagram:\n\n👉 https://www.instagram.com/_carlitos.zx\n\nDespués de seguirlo, escribe:\n\n*${usedPrefix + command} ${followKey}*`
+      text: `⚠️ Para poder usar el bot primero debes seguir a mi creador en Instagram:\n\n👉 https://www.instagram.com/_carlitos.zx\n\nDespués de seguirlo, escribe:\n\n*${usedPrefix + command} ${followKey}*\n\nY luego puedes continuar con:\n*${usedPrefix + command} Nombre.Edad*`
     }, { quoted: m })
   }
 
@@ -77,15 +113,15 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   }
 
   const regex = /^([a-zA-ZÀ-ÿñÑ\s]+)\.(\d{1,2})$/i
-  if (!regex.test(text)) {
+  if (!regex.test(text || '')) {
     return conn.sendMessage(m.chat, {
       text: `⚠️ Formato incorrecto. Usa:\n*${usedPrefix + command} Nombre.Edad*\n\nEjemplo:\n*${usedPrefix + command} Asta.18*`
     }, { quoted: m })
   }
 
-  let match = text.match(regex)
-  let name = match[1]
-  let age = parseInt(match[2])
+  const match = (text || '').match(regex)
+  const name = match[1].trim()
+  const age = parseInt(match[2], 10)
 
   if (age < 5 || age > 100) {
     return conn.sendMessage(m.chat, {
@@ -101,13 +137,14 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   const nivelMagico = Math.floor(Math.random() * 10) + 1
   const grimorioColor = '📖 Grimorio Mágico'
 
-  user.name = name.trim()
+  user.name = name
   user.age = age
   user.country = country
   user.registered = true
-  user.regTime = +new Date()
+  user.regTime = Date.now()
   user.afinidad = afinidad
   user.nivelMagico = nivelMagico
+  user.instagram = user.instagram || (m.pushName || '').replace(/\s+/g, '').toLowerCase() || ''
 
   let profilePic
   try {
